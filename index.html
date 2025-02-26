@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>ESP32 Stream with Overlay</title>
   <style>
-    /* Container to hold both the video stream and the overlay */
     #streamContainer {
       position: relative;
       display: inline-block;
@@ -16,15 +15,13 @@
       position: absolute;
       top: 0;
       left: 0;
-      pointer-events: none; /* Allows clicks to pass through */
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
   <div id="streamContainer">
-    <!-- MJPEG stream -->
     <img id="videoStream" src="http://192.168.0.38/mjpeg/1" alt="ESP32 Stream">
-    <!-- Transparent canvas overlay -->
     <canvas id="overlay"></canvas>
   </div>
 
@@ -33,13 +30,11 @@
     const canvas = document.getElementById('overlay');
     const ctx = canvas.getContext('2d');
 
-    // Update the canvas size to match the stream
     video.onload = function() {
       canvas.width = video.clientWidth;
       canvas.height = video.clientHeight;
     };
 
-    // Function to fetch the latest centroid from your ESP32
     async function fetchCentroid() {
       try {
         const response = await fetch('http://192.168.0.38/centroid');
@@ -54,16 +49,22 @@
       return null;
     }
 
-    // Function to draw the overlay (a red circle at the centroid)
     async function drawOverlay() {
       // Clear the canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       const centroid = await fetchCentroid();
       if (centroid) {
-        // Adjust coordinates if necessary. For instance, if your stream is scaled.
-        const x = centroid.x;
-        const y = centroid.y;
+        let x = centroid.x;
+        let y = centroid.y;
+        console.log('Centroid:', x, y);
+
+        const x_scale = canvas.width / 96; // scaling to preserve aspect ratio
+        const y_scale = canvas.height / 96; // scaling to preserve aspect ratio
+        console.log('Scale:', x_scale, y_scale);
+        console.log('Scaled Centroid:', x * x_scale, y * y_scale);
+        x *= x_scale;
+        y *= y_scale;
 
         ctx.beginPath();
         ctx.arc(x, y, 10, 0, 2 * Math.PI);  // Draw a circle with radius 10

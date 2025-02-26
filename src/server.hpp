@@ -22,6 +22,10 @@ extern OV2640 cam;
 extern WebServer server;
 extern SharedBuffer sharedBuffer;
 
+extern int globalCentroidX;
+extern int globalCentroidY;
+extern bool detectionAvailable;
+
 // Constants for MJPEG streaming
 const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
                       "Access-Control-Allow-Origin: *\r\n" \
@@ -41,10 +45,11 @@ void serverTask(void *pvParameters);
 void handle_jpg_stream(void);
 void handleNotFound(void);
 void streamTask(void *pvParameters);
+void handleCentroid(void);
 
-// Setup the web server routes
 void setupServer() {
   server.on("/mjpeg/1", HTTP_GET, handle_jpg_stream);
+  server.on("/centroid", HTTP_GET, handleCentroid);
   server.onNotFound(handleNotFound);
   server.begin();
 }
@@ -78,7 +83,6 @@ void handle_jpg_stream(void) {
   );
 }
 
-// Handles the 404 response
 void handleNotFound() {
   String message = "Server is running!\n\n";
   message += "URI: ";
@@ -90,6 +94,18 @@ void handleNotFound() {
   message += "\n";
   server.send(200, "text/plain", message);
 }
+
+void handleCentroid() {
+  if (detectionAvailable) {
+      String json = "{ \"x\": " + String(globalCentroidX) + ", \"y\": " + String(globalCentroidY) + " }";
+      server.sendHeader("Access-Control-Allow-Origin", "*");  
+      server.send(200, "application/json", json);
+  } else {
+      server.sendHeader("Access-Control-Allow-Origin", "*");
+      server.send(200, "application/json", "{ \"x\": -1, \"y\": -1 }"); 
+  }
+}
+
 
 // Task that streams MJPEG to clients
 void streamTask(void *pvParameters) {
@@ -117,7 +133,6 @@ void streamTask(void *pvParameters) {
       // Write the image data
       client.write((char *)jpeg_buf, jpeg_size);
       
-      // Mark that we have a new frame for inference
       sharedBuffer.hasNewFrame = true;
       
       xSemaphoreGive(sharedBuffer.mutex);

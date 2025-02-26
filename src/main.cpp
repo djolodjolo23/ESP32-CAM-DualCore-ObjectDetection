@@ -6,18 +6,17 @@
 
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
-#include "home_wifi_multi.h"
+#include "secrets.h"
 #include "server.hpp"
 #include "inference.hpp"
 
-// Camera instance
 OV2640 cam;
-
-// Shared buffer for coordination between streaming and inference
 SharedBuffer sharedBuffer;
 
-//coordinates for centroid
-float x, y;
+int globalCentroidX = -1;
+int globalCentroidY = -1;
+bool detectionAvailable = false; 
+
 
 void setup() {
   Serial.begin(115200);
@@ -60,13 +59,12 @@ void setup() {
   
   // Connect to WiFi
   WiFi.mode(WIFI_STA);
-  WiFi.begin(SSID1, PWD1);
+  WiFi.begin(SSID, PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
   
-  // Print connection details
   IPAddress ip = WiFi.localIP();
   Serial.println("\nWiFi connected");
   Serial.println(ip);
@@ -74,13 +72,9 @@ void setup() {
   Serial.print(ip);
   Serial.println("/mjpeg/1");
   
-  // Initialize server
   setupServer();
-  
-  // Initialize inference
   setupInference();
   
-  // Create server task on Core 1
   xTaskCreatePinnedToCore(
     serverTask,   
     "ServerTask", 
@@ -91,15 +85,14 @@ void setup() {
     1             
   );
   
-  // Create inference task on Core 0
   xTaskCreatePinnedToCore(
     inferenceTask,
     "InferenceTask",
-    8192,  // Increased stack size for inference
+    8192,  
     NULL,
     1,
     NULL,
-    0  // Run on Core 0
+    0  
   );
   
   Serial.println("System initialized");
