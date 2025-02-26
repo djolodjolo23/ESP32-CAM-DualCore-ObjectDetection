@@ -1,34 +1,32 @@
-
-
 #include <Arduino.h>
-/*
-
-  This is a simple MJPEG streaming webserver implemented for AI-Thinker ESP32-CAM and
-  ESP32-EYE modules.
-  This is tested to work with VLC and Blynk video widget.
-
-  Inspired by and based on this Instructable: $9 RTSP Video Streamer Using the ESP32-CAM Board
-  (https://www.instructables.com/id/9-RTSP-Video-Streamer-Using-the-ESP32-CAM-Board/)
-
-  Board: AI-Thinker ESP32-CAM
-
-*/
-
 #include "OV2640.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WiFiClient.h>
-#include <server.hpp>
-#include <printer.hpp>
+
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
 #include "home_wifi_multi.h"
+#include "server.hpp"
+#include "inference.hpp"
 
+// Camera instance
+OV2640 cam;
 
-void setup()
-{
+// Shared buffer for coordination between streaming and inference
+SharedBuffer sharedBuffer;
 
-  Serial.begin(9600);
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Starting ESP32-CAM with inference...");
+  
+  // Initialize shared buffer
+  sharedBuffer.frame = nullptr;
+  sharedBuffer.mutex = xSemaphoreCreateMutex();
+  sharedBuffer.hasNewFrame = false;
+  sharedBuffer.hasNewResult = false;
+  
+  // Initialize camera
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -50,57 +48,61 @@ void setup()
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-
-  // Frame parameters
-  //  config.frame_size = FRAMESIZE_UXGA;
-  config.frame_size = FRAMESIZE_QVGA;
+  config.frame_size = FRAMESIZE_QVGA;  // 320x240 - match Edge Impulse model input size
   config.jpeg_quality = 12;
   config.fb_count = 2;
-
+  
+  // Initialize camera
   cam.init(config);
-
-  IPAddress ip;
-
+  
+  // Connect to WiFi
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID1, PWD1);
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(F("."));
+    Serial.print(".");
   }
-  ip = WiFi.localIP();
-  Serial.println(F("WiFi connected"));
-  Serial.println("");
+  
+  // Print connection details
+  IPAddress ip = WiFi.localIP();
+  Serial.println("\nWiFi connected");
   Serial.println(ip);
   Serial.print("Stream Link: http://");
   Serial.print(ip);
   Serial.println("/mjpeg/1");
-  server.on("/mjpeg/1", HTTP_GET, handle_jpg_stream);
-  server.onNotFound(handleNotFound);
-  server.begin();
-
+  
+  // Initialize server
+  setupServer();
+  
+  // Initialize inference
+  setupInference();
+  
+  // Create server task on Core 1
   xTaskCreatePinnedToCore(
-      serverTask,   // Task function
-      "ServerTask", // Name of task
-      4096,         // Stack size
-      NULL,         // Task input parameter
-      1,            // Priority
-      NULL,         // Task handle
-      1             // Core 1 (since web server usually runs on core 1)
-    );
-
-  xTaskCreatePinnedToCore(
-      printTask,    // Task function.
-      "printTask",  // Task name.
-      2048,         // Stack size.
-      NULL,         // Parameter to pass.
-      1,            // Task priority.
-      NULL,         // Task handle.
-      0             // Pin to core 0.
+    serverTask,   
+    "ServerTask", 
+    4096,        
+    NULL,         
+    1,            
+    NULL,         
+    1             
   );
+  
+  // Create inference task on Core 0
+  xTaskCreatePinnedToCore(
+    inferenceTask,
+    "InferenceTask",
+    8192,  // Increased stack size for inference
+    NULL,
+    1,
+    NULL,
+    0  // Run on Core 0
+  );
+  
+  Serial.println("System initialized");
 }
 
-void loop()
-{
-  
+void loop() {
+  // Nothing to do here as everything is handled by tasks
+  //delay(1000);
 }

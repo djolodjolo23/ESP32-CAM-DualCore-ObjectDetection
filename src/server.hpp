@@ -1,19 +1,28 @@
+#ifndef SERVER_HPP
+#define SERVER_HPP
+
 #include <Arduino.h>
-#include "OV2640.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WiFiClient.h>
+#include "OV2640.h"
+#include "esp32-cam-banana-test_inferencing.h"
 
-#define CAMERA_MODEL_AI_THINKER
+// Structure for shared buffer
+typedef struct {
+  camera_fb_t* frame;
+  SemaphoreHandle_t mutex;
+  bool hasNewFrame;
+  ei_impulse_result_t lastResult; // Store the latest inference result
+  bool hasNewResult;
+} SharedBuffer;
 
-#include "camera_pins.h"
+// External references to shared objects
+extern OV2640 cam;
+extern WebServer server;
+extern SharedBuffer sharedBuffer;
 
-#include "home_wifi_multi.h"
-
-OV2640 cam;
-
-WebServer server(80);
-
+// Constants for MJPEG streaming
 const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
                       "Access-Control-Allow-Origin: *\r\n" \
                       "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
@@ -23,66 +32,54 @@ const int hdrLen = strlen(HEADER);
 const int bdrLen = strlen(BOUNDARY);
 const int cntLen = strlen(CTNTTYPE);
 
+// WebServer instance
+WebServer server(80);
 
+// Function prototypes
+void setupServer();
+void serverTask(void *pvParameters);
+void handle_jpg_stream(void);
+void handleNotFound(void);
+void streamTask(void *pvParameters);
 
-void streamTask(void *pvParameters) {
-    WiFiClient *clientPtr = (WiFiClient *)pvParameters;
-    WiFiClient client = *clientPtr;
-    free(clientPtr);
-  
-    client.write(HEADER, hdrLen);
-    client.write(BOUNDARY, bdrLen);
-  
-    while (client.connected()) {
-      cam.run();
-      int s = cam.getSize();
-      client.write(CTNTTYPE, cntLen);
-      char buf[32];
-      sprintf(buf, "%d\r\n\r\n", s);
-      client.write(buf, strlen(buf));
-      client.write((char *)cam.getfb(), s);
-      client.write(BOUNDARY, bdrLen);
-      vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-  
-    client.stop();
-    vTaskDelete(NULL);
-  
-  }
-
-void handle_jpg_stream(void)
-{
-  // Get the client from the server.
-  WiFiClient client = server.client();
-  
-  // Use move semantics to transfer ownership of the client.
-  WiFiClient *clientPtr = new WiFiClient(std::move(client));
-  if (clientPtr == nullptr) {
-    Serial.println("Allocation failed");
-    return;
-  }
-  
-  xTaskCreatePinnedToCore(
-      streamTask,   
-      "streamTask",  
-      8192,          
-      clientPtr,     
-      1,             
-      NULL,          
-      1             
-  );
+// Setup the web server routes
+void setupServer() {
+  server.on("/mjpeg/1", HTTP_GET, handle_jpg_stream);
+  server.onNotFound(handleNotFound);
+  server.begin();
 }
 
-void serverTask(void *pvParameters)
-{
+// Server task that handles client connections
+void serverTask(void *pvParameters) {
   for (;;) {
     server.handleClient();
     vTaskDelay(1);
   }
 }
 
-void handleNotFound()
-{
+// Stream handler - sets up the client and creates a streaming task
+void handle_jpg_stream(void) {
+  WiFiClient client = server.client();
+  WiFiClient *clientPtr = new WiFiClient(std::move(client));
+  
+  if (clientPtr == nullptr) {
+    Serial.println("Client allocation failed");
+    return;
+  }
+  
+  xTaskCreatePinnedToCore(
+    streamTask,
+    "StreamTask",
+    8192,
+    clientPtr,
+    1,
+    NULL,
+    1  // Run on Core 1
+  );
+}
+
+// Handles the 404 response
+void handleNotFound() {
   String message = "Server is running!\n\n";
   message += "URI: ";
   message += server.uri();
@@ -91,5 +88,47 @@ void handleNotFound()
   message += "\nArguments: ";
   message += server.args();
   message += "\n";
-  server.send(200, "text / plain", message);
+  server.send(200, "text/plain", message);
 }
+
+// Task that streams MJPEG to clients
+void streamTask(void *pvParameters) {
+  WiFiClient *clientPtr = (WiFiClient *)pvParameters;
+  WiFiClient client = *clientPtr;
+  delete clientPtr;
+  
+  client.write(HEADER, hdrLen);
+  client.write(BOUNDARY, bdrLen);
+  
+  while (client.connected()) {
+    // Get a frame from the camera
+    cam.run();
+    int jpeg_size = cam.getSize();
+    uint8_t* jpeg_buf = cam.getfb();
+    
+    // Update the shared buffer with the new frame
+    if (xSemaphoreTake(sharedBuffer.mutex, portMAX_DELAY) == pdTRUE) {
+      // Write the MJPEG headers
+      client.write(CTNTTYPE, cntLen);
+      char buf[32];
+      sprintf(buf, "%d\r\n\r\n", jpeg_size);
+      client.write(buf, strlen(buf));
+      
+      // Write the image data
+      client.write((char *)jpeg_buf, jpeg_size);
+      
+      // Mark that we have a new frame for inference
+      sharedBuffer.hasNewFrame = true;
+      
+      xSemaphoreGive(sharedBuffer.mutex);
+    }
+    
+    client.write(BOUNDARY, bdrLen);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+  
+  client.stop();
+  vTaskDelete(NULL);
+}
+
+#endif // SERVER_HPP
