@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ESP32 Stream with Overlay</title>
+  <style>
+    /* Container to hold both the video stream and the overlay */
+    #streamContainer {
+      position: relative;
+      display: inline-block;
+    }
+    #videoStream {
+      display: block;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none; /* Allows clicks to pass through */
+    }
+  </style>
+</head>
+<body>
+  <div id="streamContainer">
+    <!-- MJPEG stream -->
+    <img id="videoStream" src="http://192.168.0.38/mjpeg/1" alt="ESP32 Stream">
+    <!-- Transparent canvas overlay -->
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <script>
+    const video = document.getElementById('videoStream');
+    const canvas = document.getElementById('overlay');
+    const ctx = canvas.getContext('2d');
+
+    // Update the canvas size to match the stream
+    video.onload = function() {
+      canvas.width = video.clientWidth;
+      canvas.height = video.clientHeight;
+    };
+
+    // Function to fetch the latest centroid from your ESP32
+    async function fetchCentroid() {
+      try {
+        const response = await fetch('http://192.168.0.38/centroid');
+        if (response.ok) {
+          return response.json();
+        } else {
+          console.error('Failed to fetch centroid:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching centroid:', error);
+      }
+      return null;
+    }
+
+    // Function to draw the overlay (a red circle at the centroid)
+    async function drawOverlay() {
+      // Clear the canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      const centroid = await fetchCentroid();
+      if (centroid) {
+        // Adjust coordinates if necessary. For instance, if your stream is scaled.
+        const x = centroid.x;
+        const y = centroid.y;
+
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, 2 * Math.PI);  // Draw a circle with radius 10
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'red';
+        ctx.stroke();
+      }
+    }
+
+    // Poll for new centroid data every 200ms (adjust as needed)
+    setInterval(drawOverlay, 200);
+  </script>
+</body>
+</html>

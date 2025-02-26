@@ -16,6 +16,9 @@ OV2640 cam;
 // Shared buffer for coordination between streaming and inference
 SharedBuffer sharedBuffer;
 
+//coordinates for centroid
+float x, y;
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting ESP32-CAM with inference...");
