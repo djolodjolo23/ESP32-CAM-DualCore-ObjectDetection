@@ -5,3 +5,6 @@
 .vscode/ipch
 .vscode/extensions.json
 src/secrets.h
+src/edge-impulse-sdk
+src/model-parameters
+src/tflite-model
