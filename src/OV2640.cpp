@@ -155,6 +155,15 @@ void OV2640::setFrameSize(framesize_t size)
     _cam_config.frame_size = size;
 }
 
+void OV2640::returnfb()
+{
+    if (fb)
+    {
+        esp_camera_fb_return(fb);
+        fb = NULL;
+    }
+}
+
 pixformat_t OV2640::getPixelFormat(void)
 {
     return _cam_config.pixel_format;

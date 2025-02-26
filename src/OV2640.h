@@ -29,6 +29,7 @@ public:
 
     void setFrameSize(framesize_t size);
     void setPixelFormat(pixformat_t format);
+    void returnfb();
 
 private:
     void runIfNeeded(); // grab a frame if we don't already have one
