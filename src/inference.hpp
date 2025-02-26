@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include "esp_camera.h"
 #include "OV2640.h"
+#include "detected_objects.hpp"
+#include <vector>
 
 #include <esp32-cam-banana-test_inferencing.h>
 #include "edge-impulse-sdk/dsp/image/image.hpp"
@@ -20,30 +22,25 @@ const size_t fullWidth = 320;
 const size_t fullHeight = 240;
 const size_t full_rgb_buffer_size = fullWidth * fullHeight * 3;
 
-extern int globalCentroidX;
-extern int globalCentroidY;
-extern bool detectionAvailable;
 
-// Buffers for image data
-uint8_t *rgb_buffer = nullptr;       // Final inference buffer (96x96)
-uint8_t *full_rgb_buffer = nullptr;  // Full resolution image (320x240)
+uint8_t *rgb_buffer = nullptr;       // Final inference buffer
+uint8_t *full_rgb_buffer = nullptr;  // Full resolution image buffer
 
 void setupInference();
 void inferenceTask(void *pvParameters);
 int ei_camera_get_data(size_t offset, size_t length, float *out_ptr);
 void cropAndResizeImage(uint8_t* src, int srcWidth, int srcHeight, 
                         uint8_t* dst, int dstWidth, int dstHeight);
-bool isJpegComplete(uint8_t* buf, size_t len);
 
 void setupInference() {
-  // Allocate inference buffer (96x96 RGB)
+  // Allocate inference buffer (actual train image size, ex 96x96 RGB)
   rgb_buffer = (uint8_t*)heap_caps_malloc(rgb_buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!rgb_buffer) {
     Serial.println("Failed to allocate inference RGB buffer!");
     return;
   }
   
-  // Allocate full resolution buffer (320x240 RGB)
+  // Allocate full resolution buffer (ex 320x240 RGB)
   full_rgb_buffer = (uint8_t*)heap_caps_malloc(full_rgb_buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!full_rgb_buffer) {
     Serial.println("Failed to allocate full resolution RGB buffer!");
@@ -90,11 +87,6 @@ int ei_camera_get_data(size_t offset, size_t length, float *out_ptr) {
   return 0;
 }
 
-// Check if a JPEG buffer is complete by looking for the JPEG end marker
-bool isJpegComplete(uint8_t* buf, size_t len) {
-  if (len < 4) return false;
-  return (buf[len - 2] == 0xFF && buf[len - 1] == 0xD9);
-}
 
 // The inference task: decode JPEG, crop & resize image, then run inference
 void inferenceTask(void *pvParameters) {
@@ -116,6 +108,8 @@ void inferenceTask(void *pvParameters) {
                 }
 
                 // need to copy the JPEG buffer since the camera will overwrite it, a lot of synchronization issues
+                // probably better to use semaphore with good synchronization
+                // but this also works
                 uint8_t* jpeg_copy = (uint8_t*)heap_caps_malloc(jpeg_len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
                 if (!jpeg_copy) {
                     Serial.println("Failed to allocate JPEG buffer");
@@ -150,6 +144,8 @@ void inferenceTask(void *pvParameters) {
                             memcpy(&sharedBuffer.lastResult, &result, sizeof(ei_impulse_result_t));
                             sharedBuffer.hasNewResult = true;
 
+                            detectedObjects.clear();
+
                             Serial.println("Inference results:");
     #if EI_CLASSIFIER_OBJECT_DETECTION == 0
                             for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
@@ -160,9 +156,14 @@ void inferenceTask(void *pvParameters) {
                             for (size_t ix = 0; ix < result.bounding_boxes_count; ix++) {
                                 auto bb = result.bounding_boxes[ix];
                                 if (bb.value > 0.5) { // Only update if confidence is above a threshold
-                                    globalCentroidX = bb.x + bb.width / 2;  // Compute centroid
-                                    globalCentroidY = bb.y + bb.height / 2;
-                                    detectionAvailable = true;
+                                    DetectedObject obj;
+                                    obj.label = String(bb.label);
+                                    obj.x = bb.x;
+                                    obj.y = bb.y;
+                                    obj.width = bb.width;
+                                    obj.height = bb.height;
+                                    obj.conf = bb.value;
+                                    detectedObjects.push_back(obj);
                                 } else {
                                     detectionAvailable = false;
                                 }

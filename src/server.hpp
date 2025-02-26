@@ -6,6 +6,7 @@
 #include <WebServer.h>
 #include <WiFiClient.h>
 #include "OV2640.h"
+#include "detected_objects.hpp"
 #include "esp32-cam-banana-test_inferencing.h"
 
 // Structure for shared buffer
@@ -22,9 +23,6 @@ extern OV2640 cam;
 extern WebServer server;
 extern SharedBuffer sharedBuffer;
 
-extern int globalCentroidX;
-extern int globalCentroidY;
-extern bool detectionAvailable;
 
 // Constants for MJPEG streaming
 const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
@@ -96,14 +94,27 @@ void handleNotFound() {
 }
 
 void handleCentroid() {
-  if (detectionAvailable) {
-      String json = "{ \"x\": " + String(globalCentroidX) + ", \"y\": " + String(globalCentroidY) + " }";
-      server.sendHeader("Access-Control-Allow-Origin", "*");  
-      server.send(200, "application/json", json);
-  } else {
-      server.sendHeader("Access-Control-Allow-Origin", "*");
-      server.send(200, "application/json", "{ \"x\": -1, \"y\": -1 }"); 
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  if (detectedObjects.empty()) {
+    server.send(200, "application/json", "[]");  // Return empty JSON array if no detections
+    return;
   }
+
+  String json = "[";
+  for (size_t i = 0; i < detectedObjects.size(); i++) {
+    const DetectedObject& obj = detectedObjects[i];
+    if (i > 0) json += ",";
+    json += "{";
+    json += "\"label\":\"" + obj.label + "\",";
+    json += "\"x\":" + String(obj.x) + ",";
+    json += "\"y\":" + String(obj.y) + ",";
+    json += "\"width\":" + String(obj.width) + ",";
+    json += "\"height\":" + String(obj.height) + ",";
+    json += "\"conf\":" + String(obj.conf);
+    json += "}";
+  }
+  json += "]";
+  server.send(200, "application/json", json);
 }
 
 

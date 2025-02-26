@@ -13,10 +13,6 @@
 OV2640 cam;
 SharedBuffer sharedBuffer;
 
-int globalCentroidX = -1;
-int globalCentroidY = -1;
-bool detectionAvailable = false; 
-
 
 void setup() {
   Serial.begin(115200);
