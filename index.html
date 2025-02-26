@@ -36,42 +36,43 @@
     };
 
     async function fetchCentroid() {
-      try {
+    try {
         const response = await fetch('http://192.168.0.38/centroid');
         if (response.ok) {
-          return response.json();
-        } else {
-          console.error('Failed to fetch centroid:', response.status);
+            return await response.json(); // Return an array of detections
         }
-      } catch (error) {
+    } catch (error) {
         console.error('Error fetching centroid:', error);
-      }
-      return null;
     }
+    return [];
+}
 
     async function drawOverlay() {
-      // Clear the canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      const centroid = await fetchCentroid();
-      if (centroid) {
-        let x = centroid.x;
-        let y = centroid.y;
-        console.log('Centroid:', x, y);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const detections = await fetchCentroid();
+    detections.forEach(obj => {
 
-        const x_scale = canvas.width / 96; // scaling to preserve aspect ratio
-        const y_scale = canvas.height / 96; // scaling to preserve aspect ratio
-        console.log('Scale:', x_scale, y_scale);
-        console.log('Scaled Centroid:', x * x_scale, y * y_scale);
-        x *= x_scale;
-        y *= y_scale;
+        let centroid_x = obj.x + obj.width / 2;
+        let centroid_y = obj.y + obj.height / 2;
+
+        const x_scale = canvas.width / 96; // hardcoded to 96 for now
+        const y_scale = canvas.height / 96;
+
+        centroid_x *= x_scale;
+        centroid_y *= y_scale;
 
         ctx.beginPath();
-        ctx.arc(x, y, 10, 0, 2 * Math.PI);  // Draw a circle with radius 10
+        ctx.arc(centroid_x, centroid_y, 10, 0, 2 * Math.PI);
         ctx.lineWidth = 2;
         ctx.strokeStyle = 'red';
         ctx.stroke();
-      }
+
+        // Draw label
+        ctx.fillStyle = 'red';
+        ctx.font = '12px Arial';
+        ctx.fillText(obj.label, obj.x, obj.y - 5);
+        });
     }
 
     // Poll for new centroid data every 200ms (adjust as needed)
