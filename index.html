@@ -72,8 +72,9 @@
         ctx.fillStyle = 'red';
         ctx.font = '12px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(obj.label, obj.x, obj.y - 8);
-        });
+        ctx.textBaseline = 'bottom';  
+        ctx.fillText(obj.label, centroid_x, centroid_y - 8);
+    });
     }
 
     setInterval(drawOverlay, 200);
