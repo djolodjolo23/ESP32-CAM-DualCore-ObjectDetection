@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include "esp_camera.h"
-#include "OV2640.h"
+#include "OV2640.hpp"
 #include "detected_objects.hpp"
 
 #include <esp32-cam-banana-test_inferencing.h>

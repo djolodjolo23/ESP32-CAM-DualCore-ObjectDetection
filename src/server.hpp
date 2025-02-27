@@ -5,23 +5,17 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WiFiClient.h>
-#include "OV2640.h"
+#include "OV2640.hpp"
 #include "detected_objects.hpp"
 #include "esp32-cam-banana-test_inferencing.h"
+#include "shared_buffer.hpp"
 
-typedef struct {
-  camera_fb_t* frame;
-  SemaphoreHandle_t mutex;
-  bool hasNewFrame;
-  ei_impulse_result_t lastResult; // Store the latest inference result
-  bool hasNewResult;
-} SharedBuffer;
 
 // External references to shared objects
 extern OV2640 cam;
 extern WebServer server;
 extern SharedBuffer sharedBuffer;
-std::vector<DetectedObject> detectedObjects;
+extern std::vector<DetectedObject> detectedObjects;
 
 
 // Constants for MJPEG streaming

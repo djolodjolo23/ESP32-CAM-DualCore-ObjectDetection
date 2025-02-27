@@ -1,26 +1,27 @@
 #include <Arduino.h>
-#include "OV2640.h"
+#include "OV2640.hpp"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WiFiClient.h>
 #include "detected_objects.hpp"
 
-
 #define CAMERA_MODEL_AI_THINKER
+
 #include "camera_pins.h"
 #include "secrets.h"
 #include "server.hpp"
 #include "inference.hpp"
+#include "shared_buffer.hpp"
 
 OV2640 cam;
 SharedBuffer sharedBuffer;
+std::vector<DetectedObject> detectedObjects;
 
 
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting ESP32-CAM with inference...");
   
-  // Initialize shared buffer
   sharedBuffer.frame = nullptr;
   sharedBuffer.mutex = xSemaphoreCreateMutex();
   sharedBuffer.hasNewFrame = false;
@@ -43,17 +44,17 @@ void setup() {
   config.pin_vsync = VSYNC_GPIO_NUM;
   config.pin_href = HREF_GPIO_NUM;
   config.pin_sccb_sda = SIOD_GPIO_NUM;
-  config.pin_sscb_scl = SIOC_GPIO_NUM;
+  config.pin_sccb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  config.frame_size = FRAMESIZE_QVGA;  // 320x240 - match Edge Impulse model input size
+  config.frame_size = FRAMESIZE_QVGA;  
   config.jpeg_quality = 12;
   config.fb_count = 2;
   
-  // Initialize camera
   cam.init(config); 
+  cam.flip(true, false); // flip vertically
   
   // Connect to WiFi
   WiFi.mode(WIFI_STA);
