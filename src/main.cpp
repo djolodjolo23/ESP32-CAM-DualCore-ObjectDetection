@@ -87,7 +87,7 @@ void setup() {
   xTaskCreatePinnedToCore(
     inferenceTask,
     "InferenceTask",
-    8192,  
+    16384,  
     NULL,
     1,
     NULL,
@@ -98,6 +98,5 @@ void setup() {
 }
 
 void loop() {
-  // Nothing to do here as everything is handled by tasks
-  //delay(1000);
+  delay(1000); // watchdog timer will reset the ESP32 if loop is empty, this prevents unnecessary CPU usage
 }
