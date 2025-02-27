@@ -46,7 +46,6 @@ void setupServer() {
   server.begin();
 }
 
-// Server task that handles client connections
 void serverTask(void *pvParameters) {
   for (;;) {
     server.handleClient();
@@ -54,7 +53,6 @@ void serverTask(void *pvParameters) {
   }
 }
 
-// Stream handler - sets up the client and creates a streaming task
 void handle_jpg_stream(void) {
   WiFiClient client = server.client();
   WiFiClient *clientPtr = new WiFiClient(std::move(client));
@@ -90,7 +88,7 @@ void handleNotFound() {
 void handleCentroid() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   if (detectedObjects.empty()) {
-    server.send(200, "application/json", "[]");  // Return empty JSON array if no detections
+    server.send(200, "application/json", "[]"); 
     return;
   }
 
