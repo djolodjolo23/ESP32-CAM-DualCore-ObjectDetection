@@ -21,11 +21,13 @@
 </head>
 <body>
   <div id="streamContainer">
-    <img id="videoStream" src="http://192.168.0.38/mjpeg/1" alt="ESP32 Stream">
+    <img id="videoStream" src="http://esp32-cam.local/object_detection" alt="ESP32 Stream">
     <canvas id="overlay"></canvas>
   </div>
 
   <script>
+    const esp32_ip = "esp32-cam.local";
+
     const video = document.getElementById('videoStream');
     const canvas = document.getElementById('overlay');
     const ctx = canvas.getContext('2d');
@@ -36,29 +38,27 @@
     };
 
     async function fetchCentroid() {
-    try {
-        const response = await fetch('http://192.168.0.38/centroid');
+      try {
+        const response = await fetch(`http://${esp32_ip}/centroid`);
         if (response.ok) {
-            return await response.json(); // Return an array of detections
+          return await response.json();
         }
-    } catch (error) {
+      } catch (error) {
         console.error('Error fetching centroid:', error);
+      }
+      return [];
     }
-    return [];
-}
 
     async function drawOverlay() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    const detections = await fetchCentroid();
-    detections.forEach(obj => {
-
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const detections = await fetchCentroid();
+      detections.forEach(obj => {
+        // Compute the centroid of the bounding box
         let centroid_x = obj.x + obj.width / 2;
         let centroid_y = obj.y + obj.height / 2;
-
-        const x_scale = canvas.width / 96; // hardcoded to 96 for now
+        
+        const x_scale = canvas.width / 96;
         const y_scale = canvas.height / 96;
-
         centroid_x *= x_scale;
         centroid_y *= y_scale;
 
@@ -68,13 +68,12 @@
         ctx.strokeStyle = 'red';
         ctx.stroke();
 
-        // Draw label
         ctx.fillStyle = 'red';
         ctx.font = '12px Arial';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';  
+        ctx.textBaseline = 'bottom';
         ctx.fillText(obj.label, centroid_x, centroid_y - 8);
-    });
+      });
     }
 
     setInterval(drawOverlay, 200);

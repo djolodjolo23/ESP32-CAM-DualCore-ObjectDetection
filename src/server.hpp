@@ -13,7 +13,6 @@
 
 // External references to shared objects
 extern OV2640 cam;
-extern WebServer server;
 extern SharedBuffer sharedBuffer;
 extern std::vector<DetectedObject> detectedObjects;
 
@@ -38,10 +37,12 @@ void handle_jpg_stream(void);
 void handleNotFound(void);
 void streamTask(void *pvParameters);
 void handleCentroid(void);
+void handleGetIP(void);
 
 void setupServer() {
-  server.on("/mjpeg/1", HTTP_GET, handle_jpg_stream);
+  server.on("/object_detection", HTTP_GET, handle_jpg_stream);
   server.on("/centroid", HTTP_GET, handleCentroid);
+  server.on("/get_ip", HTTP_GET, handleGetIP);
   server.onNotFound(handleNotFound);
   server.begin();
 }
@@ -106,6 +107,13 @@ void handleCentroid() {
     json += "}";
   }
   json += "]";
+  server.send(200, "application/json", json);
+}
+
+void handleGetIP() {
+  IPAddress ip = WiFi.localIP();
+  String json = "{\"ip\":\"" + ip.toString() + "\"}";
+  server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(200, "application/json", json);
 }
 

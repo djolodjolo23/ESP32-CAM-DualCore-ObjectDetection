@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "OV2640.hpp"
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include <WebServer.h>
 #include <WiFiClient.h>
 #include "detected_objects.hpp"
@@ -56,21 +57,21 @@ void setup() {
   cam.init(config); 
   cam.flip(true, false); // flip vertically
   
-  // Connect to WiFi
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
+
+  if (MDNS.begin("esp32-cam")) {
+    Serial.println("MDNS responder started");
+  }
   
   IPAddress ip = WiFi.localIP();
   Serial.println("\nWiFi connected");
   Serial.println(ip);
-  Serial.print("Stream Link: http://");
-  Serial.print(ip);
-  Serial.println("/mjpeg/1");
-  
+  Serial.print("Object detection stream link: http://esp32-cam.local/object_detection\n");
   setupServer();
   setupInference();
   
