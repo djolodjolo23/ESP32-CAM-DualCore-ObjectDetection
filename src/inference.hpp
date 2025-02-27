@@ -5,13 +5,13 @@
 #include "esp_camera.h"
 #include "OV2640.h"
 #include "detected_objects.hpp"
-#include <vector>
 
 #include <esp32-cam-banana-test_inferencing.h>
 #include "edge-impulse-sdk/dsp/image/image.hpp"
 
 extern OV2640 cam;
 extern SharedBuffer sharedBuffer;
+extern std::vector<DetectedObject> detectedObjects;
 
 const size_t inferenceWidth = EI_CLASSIFIER_INPUT_WIDTH;   
 const size_t inferenceHeight = EI_CLASSIFIER_INPUT_HEIGHT; 
@@ -164,9 +164,7 @@ void inferenceTask(void *pvParameters) {
                                     obj.height = bb.height;
                                     obj.conf = bb.value;
                                     detectedObjects.push_back(obj);
-                                } else {
-                                    detectionAvailable = false;
-                                }
+                                } 
                                 if (bb.value == 0) continue;
                                 Serial.printf("  %s (%.2f) [ x: %u, y: %u, width: %u, height: %u ]\n",
                                               bb.label, bb.value, bb.x, bb.y, bb.width, bb.height);

@@ -9,7 +9,6 @@
 #include "detected_objects.hpp"
 #include "esp32-cam-banana-test_inferencing.h"
 
-// Structure for shared buffer
 typedef struct {
   camera_fb_t* frame;
   SemaphoreHandle_t mutex;
@@ -22,6 +21,7 @@ typedef struct {
 extern OV2640 cam;
 extern WebServer server;
 extern SharedBuffer sharedBuffer;
+std::vector<DetectedObject> detectedObjects;
 
 
 // Constants for MJPEG streaming

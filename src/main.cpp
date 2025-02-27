@@ -3,6 +3,8 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WiFiClient.h>
+#include "detected_objects.hpp"
+
 
 #define CAMERA_MODEL_AI_THINKER
 #include "camera_pins.h"
@@ -51,7 +53,7 @@ void setup() {
   config.fb_count = 2;
   
   // Initialize camera
-  cam.init(config);
+  cam.init(config); 
   
   // Connect to WiFi
   WiFi.mode(WIFI_STA);
