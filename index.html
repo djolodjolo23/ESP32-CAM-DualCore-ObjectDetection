@@ -63,7 +63,7 @@
         centroid_y *= y_scale;
 
         ctx.beginPath();
-        ctx.arc(centroid_x, centroid_y, 10, 0, 2 * Math.PI);
+        ctx.arc(centroid_x, centroid_y, 5, 0, 2 * Math.PI);
         ctx.lineWidth = 2;
         ctx.strokeStyle = 'red';
         ctx.stroke();
@@ -71,7 +71,8 @@
         // Draw label
         ctx.fillStyle = 'red';
         ctx.font = '12px Arial';
-        ctx.fillText(obj.label, obj.x, obj.y - 5);
+        ctx.textAlign = 'center';
+        ctx.fillText(obj.label, obj.x, obj.y - 8);
         });
     }
 
