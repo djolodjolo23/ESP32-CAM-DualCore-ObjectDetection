@@ -27,4 +27,4 @@ Currently, this setup works with **FOMO** from Edge Impulse, as it's much faster
    #define PASSWORD "your_wifi_password"
    ```
 4. Compile and upload the firmware to your ESP32-CAM.
-5. Connect to the ESP32-CAM’s IP address in a browser to see the video stream with live inference.
+5. Run the index.html file on your browser to see the live video stream with object detection. You can use Live Server or any other server to serve the file.
