@@ -13,7 +13,7 @@
 
 // External references to shared objects
 extern OV2640 cam;
-extern SharedBuffer sharedBuffer;
+SharedBuffer sharedBuffer;
 extern std::vector<DetectedObject> detectedObjects;
 
 
@@ -135,13 +135,11 @@ void streamTask(void *pvParameters) {
     
     // Update the shared buffer with the new frame
     if (xSemaphoreTake(sharedBuffer.mutex, portMAX_DELAY) == pdTRUE) {
-      // Write the MJPEG headers
       client.write(CTNTTYPE, cntLen);
       char buf[32];
       sprintf(buf, "%d\r\n\r\n", jpeg_size);
       client.write(buf, strlen(buf));
       
-      // Write the image data
       client.write((char *)jpeg_buf, jpeg_size);
       
       sharedBuffer.hasNewFrame = true;

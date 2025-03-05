@@ -15,9 +15,8 @@
 #include "shared_buffer.hpp"
 
 OV2640 cam;
-SharedBuffer sharedBuffer;
+extern SharedBuffer sharedBuffer;
 std::vector<DetectedObject> detectedObjects;
-
 
 void setup() {
   Serial.begin(115200);
@@ -53,7 +52,13 @@ void setup() {
   config.frame_size = FRAMESIZE_QVGA;  
   config.jpeg_quality = 12;
   config.fb_count = 2;
-  
+
+  size_t width = resolution[config.frame_size].width;
+  size_t height = resolution[config.frame_size].height;
+
+  Serial.println("Camera config:");
+  Serial.printf("  Resolution: %dx%d\n", width, height);
+
   cam.init(config); 
   cam.flip(true, false); // flip vertically
   
@@ -72,8 +77,10 @@ void setup() {
   Serial.println("\nWiFi connected");
   Serial.println(ip);
   Serial.print("Object detection stream link: http://esp32-cam.local/object_detection\n");
+  Serial.println(cam.getWidth());
+  Serial.println(cam.getHeight());
   setupServer();
-  setupInference();
+  setupInference(width, height);
   
   xTaskCreatePinnedToCore(
     serverTask,   

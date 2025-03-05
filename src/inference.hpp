@@ -15,30 +15,31 @@ extern std::vector<DetectedObject> detectedObjects;
 
 const size_t inferenceWidth = EI_CLASSIFIER_INPUT_WIDTH;   
 const size_t inferenceHeight = EI_CLASSIFIER_INPUT_HEIGHT; 
+
 const size_t rgb_buffer_size = inferenceWidth * inferenceHeight * 3;
 
-// Full resolution (QVGA): 320x240
-const size_t fullWidth = 320;
-const size_t fullHeight = 240;
-const size_t full_rgb_buffer_size = fullWidth * fullHeight * 3;
+size_t m_fullWidth = 0;  
+size_t m_fullHeight = 0;
 
-
-uint8_t *rgb_buffer = nullptr;       // Final inference buffer
-uint8_t *full_rgb_buffer = nullptr;  // Full resolution image buffer
-
-void setupInference();
+uint8_t *rgb_buffer = nullptr;      
+uint8_t *full_rgb_buffer = nullptr; 
+void setupInference(size_t fullWidth, size_t fullHeight);
 void inferenceTask(void *pvParameters);
 int ei_camera_get_data(size_t offset, size_t length, float *out_ptr);
 void cropAndResizeImage(uint8_t* src, int srcWidth, int srcHeight, 
                         uint8_t* dst, int dstWidth, int dstHeight);
 
-void setupInference() {
+void setupInference(size_t fullWidth, size_t fullHeight) {
   // Allocate inference buffer (actual train image size, ex 96x96 RGB)
   rgb_buffer = (uint8_t*)heap_caps_malloc(rgb_buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!rgb_buffer) {
     Serial.println("Failed to allocate inference RGB buffer!");
     return;
   }
+
+  const size_t full_rgb_buffer_size = fullWidth * fullHeight * 3;
+  m_fullWidth = fullWidth;
+  m_fullHeight = fullHeight;
   
   // Allocate full resolution buffer (ex 320x240 RGB)
   full_rgb_buffer = (uint8_t*)heap_caps_malloc(full_rgb_buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
@@ -129,7 +130,7 @@ void inferenceTask(void *pvParameters) {
                 free(jpeg_copy);  
 
                 if (converted) {
-                    cropAndResizeImage(full_rgb_buffer, fullWidth, fullHeight,
+                    cropAndResizeImage(full_rgb_buffer, m_fullWidth, m_fullHeight,
                                        rgb_buffer, inferenceWidth, inferenceHeight);
 
                     ei::signal_t signal;
