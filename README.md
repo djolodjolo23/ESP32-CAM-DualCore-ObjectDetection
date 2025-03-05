@@ -5,8 +5,8 @@ This is an ESP32-CAM project that lets you run an Edge Impulse object detection 
 ## How It Works
 
 The project runs two main tasks on separate cores:
-- **Core 1:** Handles the MJPEG server for serving clients and streaming video.
-- **Core 2:** Runs the object detection inference.
+- **Core 0:** Handles the MJPEG server for serving clients and streaming video.
+- **Core 1:** Runs the object detection inference.
 
 Inference is **not** performed on every single frame since the processing time depends on the model size. Instead, the video stream runs continuously, and a tiny JavaScript script in `index.html` dynamically updates centroids. The actual drawing happens in the browser while streaming and live inference run on the ESP32.
 
