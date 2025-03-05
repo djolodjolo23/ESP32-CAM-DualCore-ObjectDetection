@@ -4,18 +4,40 @@
   <meta charset="UTF-8">
   <title>ESP32 Stream with Overlay</title>
   <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      background-color: #f4f4f4;
+      margin: 0;
+    }
+
     #streamContainer {
       position: relative;
       display: inline-block;
+      transition: transform 0.3s ease-in-out;
     }
+
     #videoStream {
       display: block;
+      max-width: 100%;
+      height: auto;
     }
+
     #overlay {
       position: absolute;
       top: 0;
       left: 0;
       pointer-events: none;
+    }
+
+    #resizeButton {
+      margin-top: 20px;
+      padding: 10px 15px;
+      font-size: 16px;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -24,13 +46,17 @@
     <img id="videoStream" src="http://esp32-cam.local/object_detection" alt="ESP32 Stream">
     <canvas id="overlay"></canvas>
   </div>
+  
+  <button id="resizeButton">Double Size</button>
 
   <script>
     const esp32_ip = "esp32-cam.local";
-
     const video = document.getElementById('videoStream');
     const canvas = document.getElementById('overlay');
     const ctx = canvas.getContext('2d');
+    const resizeButton = document.getElementById('resizeButton');
+    
+    let isZoomed = false;
 
     video.onload = function() {
       canvas.width = video.clientWidth;
@@ -53,10 +79,9 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const detections = await fetchCentroid();
       detections.forEach(obj => {
-        // Compute the centroid of the bounding box
         let centroid_x = obj.x + obj.width / 2;
         let centroid_y = obj.y + obj.height / 2;
-        
+
         const x_scale = canvas.width / 96;
         const y_scale = canvas.height / 96;
         centroid_x *= x_scale;
@@ -77,6 +102,24 @@
     }
 
     setInterval(drawOverlay, 200);
+
+    resizeButton.addEventListener('click', () => {
+      if (isZoomed) {
+        video.style.width = '';
+        video.style.height = '';
+        canvas.style.width = '';
+        canvas.style.height = '';
+        resizeButton.textContent = "Double Size";
+      } else {
+        const scaleFactor = 2;
+        video.style.width = video.clientWidth * scaleFactor + 'px';
+        video.style.height = 'auto'; 
+        canvas.style.width = video.clientWidth * scaleFactor + 'px';
+        canvas.style.height = video.clientHeight * scaleFactor + 'px';
+        resizeButton.textContent = "Reset Size";
+      }
+      isZoomed = !isZoomed;
+    });
   </script>
 </body>
 </html>
