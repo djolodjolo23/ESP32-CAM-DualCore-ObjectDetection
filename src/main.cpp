@@ -7,6 +7,10 @@
 #include "detected_objects.hpp"
 
 #define CAMERA_MODEL_AI_THINKER
+// #define CAMERA_MODEL_WROVER_KIT
+// #define CAMERA_MODEL_ESP_EYE
+// #define CAMERA_MODEL_M5STACK_PSRAM
+// #define CAMERA_MODEL_M5STACK_WIDE
 
 #include "camera_pins.h"
 #include "secrets.h"

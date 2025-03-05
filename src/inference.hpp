@@ -6,8 +6,8 @@
 #include "OV2640.hpp"
 #include "detected_objects.hpp"
 
-#include <esp32-cam-banana-test_inferencing.h>
-#include "edge-impulse-sdk/dsp/image/image.hpp"
+#include <esp32-cam-banana-test_inferencing.h> // use your own model's header file
+//#include "edge-impulse-sdk/dsp/image/image.hpp"
 
 extern OV2640 cam;
 extern SharedBuffer sharedBuffer;

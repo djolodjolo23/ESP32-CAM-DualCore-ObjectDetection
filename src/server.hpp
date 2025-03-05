@@ -11,13 +11,11 @@
 #include "shared_buffer.hpp"
 
 
-// External references to shared objects
 extern OV2640 cam;
 SharedBuffer sharedBuffer;
 extern std::vector<DetectedObject> detectedObjects;
 
 
-// Constants for MJPEG streaming
 const char HEADER[] = "HTTP/1.1 200 OK\r\n" \
                       "Access-Control-Allow-Origin: *\r\n" \
                       "Content-Type: multipart/x-mixed-replace; boundary=123456789000000000000987654321\r\n";
@@ -27,10 +25,8 @@ const int hdrLen = strlen(HEADER);
 const int bdrLen = strlen(BOUNDARY);
 const int cntLen = strlen(CTNTTYPE);
 
-// WebServer instance
 WebServer server(80);
 
-// Function prototypes
 void setupServer();
 void serverTask(void *pvParameters);
 void handle_jpg_stream(void);
@@ -128,12 +124,10 @@ void streamTask(void *pvParameters) {
   client.write(BOUNDARY, bdrLen);
   
   while (client.connected()) {
-    // Get a frame from the camera
     cam.run();
     int jpeg_size = cam.getSize();
     uint8_t* jpeg_buf = cam.getfb();
     
-    // Update the shared buffer with the new frame
     if (xSemaphoreTake(sharedBuffer.mutex, portMAX_DELAY) == pdTRUE) {
       client.write(CTNTTYPE, cntLen);
       char buf[32];
