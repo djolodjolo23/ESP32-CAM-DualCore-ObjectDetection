@@ -10,7 +10,7 @@ The project runs two main tasks on separate cores:
 
 Inference is **not** performed on every single frame since the processing time depends on the model size. Instead, the video stream runs continuously, and a tiny JavaScript script in `index.html` dynamically updates centroids. The actual drawing happens in the browser while streaming and live inference run on the ESP32.
 
-Currently, this setup works with **FOMO** (Fast Object Detection for Mobile Devices) as it's much faster compared to other models. The JavaScript script calculates centroids by default. If you want to modify the code to use bounding boxes instead, you’ll need to update the JavaScript file accordingly.
+Currently, this setup works with **FOMO** from Edge Impulse, as it's much faster compared to other models. The JavaScript script calculates centroids by default. If you want to modify the code to use bounding boxes instead, you’ll need to update the JavaScript file accordingly.
 
 ## How to Run
 
