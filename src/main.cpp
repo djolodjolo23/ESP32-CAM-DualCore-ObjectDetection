@@ -81,8 +81,6 @@ void setup() {
   Serial.println("\nWiFi connected");
   Serial.println(ip);
   Serial.print("Object detection stream link: http://esp32-cam.local/object_detection\n");
-  Serial.println(cam.getWidth());
-  Serial.println(cam.getHeight());
   setupServer();
   setupInference(width, height);
   

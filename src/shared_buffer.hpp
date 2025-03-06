@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include "esp_camera.h"
-#include "esp32-cam-banana-test_inferencing.h"
+#include "test_augmented_inferencing.h" // use your own model here
 
 typedef struct {
   camera_fb_t* frame;

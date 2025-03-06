@@ -55,6 +55,8 @@
     const canvas = document.getElementById('overlay');
     const ctx = canvas.getContext('2d');
     const resizeButton = document.getElementById('resizeButton');
+    const x_scale = canvas.width / 96; // hardocded width of ESP32-CAM image for now
+    const y_scale = canvas.height / 96;
     
     let isZoomed = false;
 
@@ -79,13 +81,8 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const detections = await fetchCentroid();
       detections.forEach(obj => {
-        let centroid_x = obj.x + obj.width / 2;
-        let centroid_y = obj.y + obj.height / 2;
-
-        const x_scale = canvas.width / 96;
-        const y_scale = canvas.height / 96;
-        centroid_x *= x_scale;
-        centroid_y *= y_scale;
+        let centroid_x = (obj.x + obj.width / 2) * x_scale;
+        let centroid_y = (obj.y + obj.height / 2) * y_scale;
 
         ctx.beginPath();
         ctx.arc(centroid_x, centroid_y, 5, 0, 2 * Math.PI);
@@ -111,6 +108,7 @@
         canvas.style.height = '';
         resizeButton.textContent = "Double Size";
       } else {
+        // TODO: have to update the x and y scale factor based on the actual image size
         const scaleFactor = 2;
         video.style.width = video.clientWidth * scaleFactor + 'px';
         video.style.height = 'auto'; 
