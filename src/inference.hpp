@@ -6,7 +6,7 @@
 #include "OV2640.hpp"
 #include "detected_objects.hpp"
 
-#include <esp32-cam-banana-test_inferencing.h> // use your own model's header file
+#include "test_augmented_inferencing.h" // use your own model here
 //#include "edge-impulse-sdk/dsp/image/image.hpp"
 
 extern OV2640 cam;
@@ -156,7 +156,7 @@ void inferenceTask(void *pvParameters) {
     #if EI_CLASSIFIER_OBJECT_DETECTION == 1
                             for (size_t ix = 0; ix < result.bounding_boxes_count; ix++) {
                                 auto bb = result.bounding_boxes[ix];
-                                if (bb.value > 0.5) { // Only update if confidence is above a threshold
+                                if (bb.value > 0.7) { // Only update if confidence is above a threshold
                                     DetectedObject obj;
                                     obj.label = String(bb.label);
                                     obj.x = bb.x;
