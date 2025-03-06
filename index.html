@@ -13,26 +13,22 @@
       background-color: #f4f4f4;
       margin: 0;
     }
-
     #streamContainer {
       position: relative;
       display: inline-block;
       transition: transform 0.3s ease-in-out;
     }
-
     #videoStream {
       display: block;
       max-width: 100%;
       height: auto;
     }
-
     #overlay {
       position: absolute;
       top: 0;
       left: 0;
       pointer-events: none;
     }
-
     #resizeButton {
       margin-top: 20px;
       padding: 10px 15px;
@@ -55,8 +51,6 @@
     const canvas = document.getElementById('overlay');
     const ctx = canvas.getContext('2d');
     const resizeButton = document.getElementById('resizeButton');
-    const x_scale = canvas.width / 96; // hardocded width of ESP32-CAM image for now
-    const y_scale = canvas.height / 96;
     
     let isZoomed = false;
 
@@ -79,10 +73,14 @@
 
     async function drawOverlay() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const displayToOriginalRatioX = canvas.width / 320;
+      const displayToOriginalRatioY = canvas.height / 240;
+
       const detections = await fetchCentroid();
       detections.forEach(obj => {
-        let centroid_x = (obj.x + obj.width / 2) * x_scale;
-        let centroid_y = (obj.y + obj.height / 2) * y_scale;
+        let centroid_x = (obj.x + obj.width / 2) * displayToOriginalRatioX;
+        let centroid_y = (obj.y + obj.height / 2) * displayToOriginalRatioY;
 
         ctx.beginPath();
         ctx.arc(centroid_x, centroid_y, 5, 0, 2 * Math.PI);
@@ -106,14 +104,23 @@
         video.style.height = '';
         canvas.style.width = '';
         canvas.style.height = '';
+        canvas.width = video.clientWidth;
+        canvas.height = video.clientHeight;
         resizeButton.textContent = "Double Size";
       } else {
-        // TODO: have to update the x and y scale factor based on the actual image size
         const scaleFactor = 2;
         video.style.width = video.clientWidth * scaleFactor + 'px';
         video.style.height = 'auto'; 
-        canvas.style.width = video.clientWidth * scaleFactor + 'px';
-        canvas.style.height = video.clientHeight * scaleFactor + 'px';
+
+        const rect = video.getBoundingClientRect();
+        const newWidth = rect.width;
+        const newHeight = rect.height;
+
+        canvas.style.width = newWidth + 'px';
+        canvas.style.height = newHeight + 'px';
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+
         resizeButton.textContent = "Reset Size";
       }
       isZoomed = !isZoomed;
