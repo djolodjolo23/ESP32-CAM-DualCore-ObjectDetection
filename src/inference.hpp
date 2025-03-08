@@ -7,7 +7,6 @@
 #include "detected_objects.hpp"
 
 #include "test_augmented_inferencing.h" // use your own model here
-//#include "edge-impulse-sdk/dsp/image/image.hpp"
 
 extern OV2640 cam;
 extern SharedBuffer sharedBuffer;
@@ -21,6 +20,12 @@ const size_t rgb_buffer_size = EI_CLASSIFIER_NN_INPUT_FRAME_SIZE;
 size_t m_fullWidth = 0;  
 size_t m_fullHeight = 0;
 
+int m_cropWidth = 0;
+int m_cropHeight = 0;
+int m_offsetX = 0;
+int m_offsetY = 0;
+
+
 uint8_t *rgb_buffer = nullptr;      
 uint8_t *full_rgb_buffer = nullptr; 
 void setupInference(size_t fullWidth, size_t fullHeight);
@@ -28,7 +33,6 @@ void inferenceTask(void *pvParameters);
 int ei_camera_get_data(size_t offset, size_t length, float *out_ptr);
 
 void setupInference(size_t fullWidth, size_t fullHeight) {
-  // Allocate inference buffer (actual train image size, ex 96x96 RGB)
   rgb_buffer = (uint8_t*)heap_caps_malloc(rgb_buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!rgb_buffer) {
     Serial.println("Failed to allocate inference RGB buffer!");
@@ -40,7 +44,6 @@ void setupInference(size_t fullWidth, size_t fullHeight) {
   m_fullWidth = fullWidth;
   m_fullHeight = fullHeight;
   
-  // Allocate full resolution buffer (ex 320x240 RGB)
   full_rgb_buffer = (uint8_t*)heap_caps_malloc(full_rgb_buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!full_rgb_buffer) {
     Serial.println("Failed to allocate full resolution RGB buffer!");
@@ -50,63 +53,60 @@ void setupInference(size_t fullWidth, size_t fullHeight) {
   Serial.println("Inference setup complete");
 }
 
-// Resize the image while preserving aspect ratio (letterboxing if needed)
+// Resize the image while preserving aspect ratio with center cropping
 void resizeImage(uint8_t* src, int srcWidth, int srcHeight, 
   uint8_t* dst, int dstWidth, int dstHeight) {
-  // Calculate scaling factors
-  float scaleX = (float)dstWidth / srcWidth;
-  float scaleY = (float)dstHeight / srcHeight;
+  // Determine the crop dimensions to maintain aspect ratio
 
-  // Use the smaller scale to maintain aspect ratio
-  float scale = (scaleX < scaleY) ? scaleX : scaleY;
+  float srcAspect = (float)srcWidth / srcHeight;
+  float dstAspect = (float)dstWidth / dstHeight;
 
-  // Calculate the dimensions of the resized image
-  int scaledWidth = (int)(srcWidth * scale);
-  int scaledHeight = (int)(srcHeight * scale);
 
-  // Calculate padding to center the image
-  int padX = (dstWidth - scaledWidth) / 2;
-  int padY = (dstHeight - scaledHeight) / 2;
+  if (srcAspect > dstAspect) {
+    // Source is wider - crop width
+    m_cropHeight = srcHeight;
+    m_cropWidth = srcHeight * dstAspect;
+    m_offsetX = (srcWidth - m_cropWidth) / 2;
+  } else {
+    // Source is taller - crop height
+    m_cropWidth = srcWidth;
+    m_cropHeight = srcWidth / dstAspect;
+    m_offsetY = (srcHeight - m_cropHeight) / 2;
+  }
 
-  // Clear destination buffer (fill with black)
-  memset(dst, 0, dstWidth * dstHeight * 3);
+  // Resize with bilinear interpolation for better quality
+  for (int y = 0; y < dstHeight; y++) {
+    for (int x = 0; x < dstWidth; x++) {
+    // Map destination coordinates to source cropped area
+    float srcX = m_offsetX + (float)x * m_cropWidth / dstWidth;
+    float srcY = m_offsetY + (float)y * m_cropHeight / dstHeight;
 
-// Perform the resize with bilinear interpolation
-  for (int y = 0; y < scaledHeight; y++) {
-    for (int x = 0; x < scaledWidth; x++) {
-    // Map destination coordinates to source coordinates
-    float srcX = x / scale;
-    float srcY = y / scale;
-
-    // Get the four surrounding pixels
+    // Get integer and fractional parts for interpolation
     int x0 = (int)srcX;
     int y0 = (int)srcY;
     int x1 = min(x0 + 1, srcWidth - 1);
     int y1 = min(y0 + 1, srcHeight - 1);
-
-    // Calculate interpolation weights
     float wx = srcX - x0;
     float wy = srcY - y0;
 
-    // Get the four surrounding pixel values for each channel
-      for (int c = 0; c < 3; c++) {
-        float tl = src[(y0 * srcWidth + x0) * 3 + c];
-        float tr = src[(y0 * srcWidth + x1) * 3 + c];
-        float bl = src[(y1 * srcWidth + x0) * 3 + c];
-        float br = src[(y1 * srcWidth + x1) * 3 + c];
-        
-        // Bilinear interpolation
-        float top = tl * (1 - wx) + tr * wx;
-        float bottom = bl * (1 - wx) + br * wx;
-        float pixel = top * (1 - wy) + bottom * wy;
-        
-        // Set the pixel value in the destination buffer with padding
-        dst[((y + padY) * dstWidth + (x + padX)) * 3 + c] = (uint8_t)pixel;
-      }
+      // For each color channel
+    for (int c = 0; c < 3; c++) {
+    // Get the four surrounding pixels
+      uint8_t p00 = src[(y0 * srcWidth + x0) * 3 + c];
+      uint8_t p01 = src[(y0 * srcWidth + x1) * 3 + c];
+      uint8_t p10 = src[(y1 * srcWidth + x0) * 3 + c];
+      uint8_t p11 = src[(y1 * srcWidth + x1) * 3 + c];
+
+      // Bilinear interpolation
+      float top = p00 * (1 - wx) + p01 * wx;
+      float bottom = p10 * (1 - wx) + p11 * wx;
+      uint8_t pixel = (uint8_t)(top * (1 - wy) + bottom * wy);
+
+      dst[(y * dstWidth + x) * 3 + c] = pixel;
+    }
     }
   }
 }
-
 // Function to supply data to the Edge Impulse SDK
 int ei_camera_get_data(size_t offset, size_t length, float *out_ptr) {
   size_t pixel_ix = offset * 3;
@@ -120,9 +120,7 @@ int ei_camera_get_data(size_t offset, size_t length, float *out_ptr) {
 }
 
 
-// The inference task: decode JPEG, crop & resize image, then run inference
 void inferenceTask(void *pvParameters) {
-    // Allow time for camera and system initialization
     vTaskDelay(pdMS_TO_TICKS(2000));
     Serial.println("Inference task started");
 
@@ -157,7 +155,7 @@ void inferenceTask(void *pvParameters) {
                 sharedBuffer.hasNewFrame = false;  // reset the flag
                 xSemaphoreGive(sharedBuffer.mutex);
 
-                // bool converted = fmt2rgb888(jpeg_copy, jpeg_len, PIXFORMAT_JPEG, full_rgb_buffer); // not sure if this is needed
+                bool converted = fmt2rgb888(jpeg_copy, jpeg_len, PIXFORMAT_JPEG, full_rgb_buffer); // not sure if this is needed
                 free(jpeg_copy);  
 
                 // if (converted) {
@@ -186,21 +184,34 @@ void inferenceTask(void *pvParameters) {
     #if EI_CLASSIFIER_OBJECT_DETECTION == 1
                             for (size_t ix = 0; ix < result.bounding_boxes_count; ix++) {
                                 auto bb = result.bounding_boxes[ix];
-                                if (bb.value > 0.7) { // Only update if confidence is above a threshold
-                                    DetectedObject obj;
-                                    obj.label = bb.label;
-                                    float xScale = (float)m_fullWidth / inferenceWidth;
-                                    float yScale = (float)m_fullHeight / inferenceHeight;
-                                    obj.x = bb.x * xScale;
-                                    obj.y = bb.y * yScale;
-                                    obj.width = bb.width * xScale;
-                                    obj.height = bb.height * yScale;
-                                    obj.conf = bb.value;
-                                    detectedObjects.push_back(obj);
-                                } 
+                                if (bb.value > 0.7) {
+                                  DetectedObject obj;
+                                  obj.label = String(bb.label);
+                                  
+                                  // Use the stored crop dimensions
+                                  float xScale = (float)m_cropWidth / inferenceWidth;
+                                  float yScale = (float)m_cropHeight / inferenceHeight;
+
+                                  Serial.printf("Crop: %d x %d\n", m_cropWidth, m_cropHeight);
+
+                                  Serial.printf("xScale: %.2f, yScale: %.2f\n", xScale, yScale);
+                                  
+                                  // Map back to original image coordinates
+                                  obj.x = bb.x * xScale + m_offsetX;
+                                  obj.y = bb.y * yScale + m_offsetY;
+                                  obj.width = bb.width * xScale;
+                                  obj.height = bb.height * yScale;
+                                  
+                                  obj.conf = bb.value;
+                                  Serial.printf("  %s (%.2f) [ x: %u, y: %u, width: %u, height: %u ]\n",
+                                                obj.label.c_str(), obj.conf, obj.x, obj.y, obj.width, obj.height);
+                                  Serial.printf("  %s (%.2f) [ x: %u, y: %u, width: %u, height: %u ]\n",
+                                                bb.label, bb.value, bb.x, bb.y, bb.width, bb.height);
+                                  detectedObjects.push_back(obj);
+                                }
                                 if (bb.value == 0) continue;
-                                Serial.printf("  %s (%.2f) [ x: %u, y: %u, width: %u, height: %u ]\n",
-                                              bb.label, bb.value, bb.x, bb.y, bb.width, bb.height);
+                                //Serial.printf("  %s (%.2f) [ x: %u, y: %u, width: %u, height: %u ]\n",
+                               //               bb.label, bb.value, bb.x, bb.y, bb.width, bb.height);
                             }
     #endif
                             xSemaphoreGive(sharedBuffer.mutex);

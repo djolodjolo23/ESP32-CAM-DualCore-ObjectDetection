@@ -6,6 +6,7 @@
 #include <WiFiClient.h>
 #include "detected_objects.hpp"
 
+
 #define CAMERA_MODEL_AI_THINKER
 // #define CAMERA_MODEL_WROVER_KIT
 // #define CAMERA_MODEL_ESP_EYE
@@ -64,7 +65,7 @@ void setup() {
   Serial.printf("  Resolution: %dx%d\n", width, height);
 
   cam.init(config); 
-  //cam.flip(true, false); // flip vertically
+  cam.flip(true, false); // flip vertically
   
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, PASSWORD);
