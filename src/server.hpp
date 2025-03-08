@@ -7,7 +7,7 @@
 #include <WiFiClient.h>
 #include "OV2640.hpp"
 #include "detected_objects.hpp"
-#include "test_augmented_inferencing.h" // use your own model here
+#include "Object_Detection_with_Image_Transformation_-_Orange_inferencing.h" // use your own model here
 #include "shared_buffer.hpp"
 
 

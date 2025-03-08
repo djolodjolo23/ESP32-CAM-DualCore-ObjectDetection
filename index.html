@@ -77,8 +77,11 @@
       const displayToOriginalRatioX = canvas.width / 320;
       const displayToOriginalRatioY = canvas.height / 240;
 
+      //console.log(displayToOriginalRatioX, displayToOriginalRatioY);
+
       const detections = await fetchCentroid();
       detections.forEach(obj => {
+        
         let centroid_x = (obj.x + obj.width / 2) * displayToOriginalRatioX;
         let centroid_y = (obj.y + obj.height / 2) * displayToOriginalRatioY;
 

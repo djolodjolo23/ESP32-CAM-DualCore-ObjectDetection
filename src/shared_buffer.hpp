@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include "esp_camera.h"
-#include "test_augmented_inferencing.h" // use your own model here
+#include "Object_Detection_with_Image_Transformation_-_Orange_inferencing.h" // use your own model here
 
 typedef struct {
   camera_fb_t* frame;

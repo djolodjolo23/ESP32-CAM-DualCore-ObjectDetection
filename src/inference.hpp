@@ -6,7 +6,7 @@
 #include "OV2640.hpp"
 #include "detected_objects.hpp"
 
-#include "test_augmented_inferencing.h" // use your own model here
+#include "Object_Detection_with_Image_Transformation_-_Orange_inferencing.h" // use your own model here
 
 extern OV2640 cam;
 extern SharedBuffer sharedBuffer;
@@ -78,32 +78,31 @@ void resizeImage(uint8_t* src, int srcWidth, int srcHeight,
   for (int y = 0; y < dstHeight; y++) {
     for (int x = 0; x < dstWidth; x++) {
     // Map destination coordinates to source cropped area
-    float srcX = m_offsetX + (float)x * m_cropWidth / dstWidth;
-    float srcY = m_offsetY + (float)y * m_cropHeight / dstHeight;
+      float srcX = m_offsetX + (float)x * m_cropWidth / dstWidth;
+      float srcY = m_offsetY + (float)y * m_cropHeight / dstHeight;
 
-    // Get integer and fractional parts for interpolation
-    int x0 = (int)srcX;
-    int y0 = (int)srcY;
-    int x1 = min(x0 + 1, srcWidth - 1);
-    int y1 = min(y0 + 1, srcHeight - 1);
-    float wx = srcX - x0;
-    float wy = srcY - y0;
+      int x0 = (int)srcX;
+      int y0 = (int)srcY;
+      int x1 = min(x0 + 1, srcWidth - 1);
+      int y1 = min(y0 + 1, srcHeight - 1);
+      float wx = srcX - x0;
+      float wy = srcY - y0;
 
-      // For each color channel
-    for (int c = 0; c < 3; c++) {
-    // Get the four surrounding pixels
-      uint8_t p00 = src[(y0 * srcWidth + x0) * 3 + c];
-      uint8_t p01 = src[(y0 * srcWidth + x1) * 3 + c];
-      uint8_t p10 = src[(y1 * srcWidth + x0) * 3 + c];
-      uint8_t p11 = src[(y1 * srcWidth + x1) * 3 + c];
+        // For each color channel
+      for (int c = 0; c < 3; c++) {
+      // Get the four surrounding pixels
+        uint8_t p00 = src[(y0 * srcWidth + x0) * 3 + c];
+        uint8_t p01 = src[(y0 * srcWidth + x1) * 3 + c];
+        uint8_t p10 = src[(y1 * srcWidth + x0) * 3 + c];
+        uint8_t p11 = src[(y1 * srcWidth + x1) * 3 + c];
 
-      // Bilinear interpolation
-      float top = p00 * (1 - wx) + p01 * wx;
-      float bottom = p10 * (1 - wx) + p11 * wx;
-      uint8_t pixel = (uint8_t)(top * (1 - wy) + bottom * wy);
+        // Bilinear interpolation
+        float top = p00 * (1 - wx) + p01 * wx;
+        float bottom = p10 * (1 - wx) + p11 * wx;
+        uint8_t pixel = (uint8_t)(top * (1 - wy) + bottom * wy);
 
-      dst[(y * dstWidth + x) * 3 + c] = pixel;
-    }
+        dst[(y * dstWidth + x) * 3 + c] = pixel;
+      }
     }
   }
 }

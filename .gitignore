@@ -8,3 +8,7 @@ src/secrets.h
 src/edge-impulse-sdk
 src/model-parameters
 src/tflite-model
+
+Object_Detection_with_Image_Transformation_-_Orange_inferencing
+esp32-cam-banana-test_inferencing
+test_augmented_inferencing 3
