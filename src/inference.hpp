@@ -36,8 +36,6 @@ int16_t *y_map = nullptr;
 void setupInference(size_t fullWidth, size_t fullHeight);
 void inferenceTask(void *pvParameters);
 int ei_camera_get_data(size_t offset, size_t length, float *out_ptr);
-void fastResizeImageNearestNeighbor(uint8_t* src, uint8_t* dst);
-void createResizeMappings();
 
 int64_t resize_time = 0;
 int64_t decode_time = 0;
@@ -76,54 +74,15 @@ void setupInference(size_t fullWidth, size_t fullHeight) {
     m_offsetY = (fullHeight - m_cropHeight) / 2;
   }
 
-  createResizeMappings();
-
   Serial.printf("Crop dimensions: w=%d, h=%d, offsetX=%d, offsetY=%d\n", 
     m_cropWidth, m_cropHeight, m_offsetX, m_offsetY);
   Serial.println("Optimized inference setup complete");
 }
 
-void createResizeMappings() {
-  x_map = (int16_t*)heap_caps_malloc(inferenceWidth * sizeof(int16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-  y_map = (int16_t*)heap_caps_malloc(inferenceHeight * sizeof(int16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-  
-  if (!x_map || !y_map) {
-    Serial.println("Failed to allocate mapping tables!");
-    return;
-  }
-
-  for (int x = 0; x < inferenceWidth; x++) {
-    float srcX = m_offsetX + (float)x * m_cropWidth / inferenceWidth;
-    x_map[x] = (int16_t)srcX;
-  }
-
-  for (int y = 0; y < inferenceHeight; y++) {
-    float srcY = m_offsetY + (float)y * m_cropHeight / inferenceHeight;
-    y_map[y] = (int16_t)srcY;
-  }
-}
-
-void fastResizeImageNearestNeighbor(uint8_t* src, uint8_t* dst) {
-  for (int y = 0; y < inferenceHeight; y++) {
-    int srcY = y_map[y];
-    int srcY_offset = srcY * m_fullWidth * 3;
-    
-    for (int x = 0; x < inferenceWidth; x++) {
-      int srcX = x_map[x];
-      int srcPos = srcY_offset + srcX * 3;
-      int dstPos = (y * inferenceWidth + x) * 3;
-      
-      dst[dstPos] = src[srcPos];
-      dst[dstPos + 1] = src[srcPos + 1];
-      dst[dstPos + 2] = src[srcPos + 2];
-    }
-  }
-}
 
 
 // Function to supply data to the Edge Impulse SDK
-int ei_camera_get_data(size_t offset, size_t length, float *out_ptr)
-{
+int ei_camera_get_data(size_t offset, size_t length, float *out_ptr) {
     // we already have a RGB888 buffer, so recalculate offset into pixel index
     size_t pixel_ix = offset * 3;
     size_t pixels_left = length;
