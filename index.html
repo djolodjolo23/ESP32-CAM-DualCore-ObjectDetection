@@ -85,6 +85,10 @@
         let centroid_x = (obj.x + obj.width / 2) * displayToOriginalRatioX;
         let centroid_y = (obj.y + obj.height / 2) * displayToOriginalRatioY;
 
+        //let centroid_x = obj.x * displayToOriginalRatioX;
+        //let centroid_y = obj.y * displayToOriginalRatioY;
+        console.log(obj.x, obj.y);
+
         ctx.beginPath();
         ctx.arc(centroid_x, centroid_y, 5, 0, 2 * Math.PI);
         ctx.lineWidth = 2;

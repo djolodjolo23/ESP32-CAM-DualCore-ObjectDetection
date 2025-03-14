@@ -65,7 +65,7 @@ void setup() {
   Serial.printf("  Resolution: %dx%d\n", width, height);
 
   cam.init(config); 
-  //cam.flip(true, false); // flip vertically
+  cam.flip(true, false); // flip vertically
   
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, PASSWORD);
