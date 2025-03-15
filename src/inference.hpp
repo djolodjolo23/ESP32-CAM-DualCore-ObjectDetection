@@ -26,12 +26,9 @@ int m_cropHeight = 0;
 int m_offsetX = 0;
 int m_offsetY = 0;
 
-
 uint8_t *rgb_buffer = nullptr;      
 uint8_t *full_rgb_buffer = nullptr; 
 
-int16_t *x_map = nullptr;
-int16_t *y_map = nullptr;
 
 void setupInference(size_t fullWidth, size_t fullHeight);
 void inferenceTask(void *pvParameters);
@@ -47,12 +44,11 @@ void setupInference(size_t fullWidth, size_t fullHeight) {
     Serial.println("Failed to allocate inference RGB buffer!");
     return;
   }
-
   const size_t full_rgb_buffer_size = fullWidth * fullHeight * 3;
-  
+
   m_fullWidth = fullWidth;
   m_fullHeight = fullHeight;
-  
+
   full_rgb_buffer = (uint8_t*)heap_caps_malloc(full_rgb_buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!full_rgb_buffer) {
     Serial.println("Failed to allocate full resolution RGB buffer!");
@@ -192,6 +188,7 @@ void inferenceTask(void *pvParameters) {
 #endif
 #if EI_CLASSIFIER_OBJECT_DETECTION == 1
                           for (size_t ix = 0; ix < result.bounding_boxes_count; ix++) {
+                            Serial.printf("  %s: %.2f at (%d, %d) size %dx%d\n", result.bounding_boxes[ix].label, result.bounding_boxes[ix].value, result.bounding_boxes[ix].x, result.bounding_boxes[ix].y, result.bounding_boxes[ix].width, result.bounding_boxes[ix].height);
                               auto bb = result.bounding_boxes[ix];
                               if (bb.value > 0.5) {
                                   DetectedObject obj;
@@ -200,9 +197,6 @@ void inferenceTask(void *pvParameters) {
                                   float xScale = (float)m_cropWidth / inferenceWidth;
                                   float yScale = (float)m_cropHeight / inferenceHeight;
 
-
-                                  
-                                
                                   obj.x = bb.x * xScale + m_offsetX;
                                   obj.y = bb.y * yScale + m_offsetY;
                                   obj.width = bb.width * xScale;
