@@ -2,6 +2,7 @@
 
 This is an RTOS based ESP32-CAM project that lets you run an Edge Impulse object detection model alongside an MJPEG video streaming server.
 
+
 ## Hardware Requirements
 
 The only essential device is the ESP32-CAM board. There are several versions available on the market, with the cheapest option likely found on AliExpress. I use the ESP32-AI Thinker-based board. The easiest way to upload the code to it is by buying the mounting slot (shield), which adds a USB port for easy flashing.
@@ -14,6 +15,8 @@ There are other ways to upload the code, of course, through the data ports on th
 - A breadboard
 - Something to create a tripod effect (a tripod works best, but I personally used a book reading light—the real DIY hero!)
 - An ESP32-CAM microcontroller
+
+![My setup](assets/485092731_676135508223403_1431287751894489238_n.jpg)
 
 ## How It Works
 
@@ -44,3 +47,11 @@ Currently, this setup works with **FOMO** from Edge Impulse, as it's much faster
    ```
 4. Compile and upload the firmware to your ESP32-CAM.
 5. Run the index.html file on your browser to see the live video stream with object detection. You can use Live Server or any other server to serve the file.
+
+## Some Additional Images
+![My setup](assets/484120656_1516452632645445_1204470083616640892_n.jpg)
+![My setup](assets/485092746_2431860037172045_9018040787174577976_n.jpg)
+![My setup](assets/485774016_570161502706598_3741120321350663478_n.jpg)
+
+## Snippets From the Live Inference
+![Snippet from the video stream](assets/Screenshot%20from%202025-03-21%2017-59-28.png)
