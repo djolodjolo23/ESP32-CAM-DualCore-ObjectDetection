@@ -52,6 +52,3 @@ Currently, this setup works with **FOMO** from Edge Impulse, as it's much faster
 ![My setup](assets/484120656_1516452632645445_1204470083616640892_n.jpg)
 ![My setup](assets/485092746_2431860037172045_9018040787174577976_n.jpg)
 ![My setup](assets/485774016_570161502706598_3741120321350663478_n.jpg)
-
-## Snippets From the Live Inference
-![Snippet from the video stream](assets/Screenshot%20from%202025-03-21%2017-59-28.png)
