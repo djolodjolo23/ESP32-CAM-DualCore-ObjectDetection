@@ -17,6 +17,7 @@
       position: relative;
       display: inline-block;
       transition: transform 0.3s ease-in-out;
+      margin-bottom: 20px;
     }
     #videoStream {
       display: block;
@@ -29,11 +30,26 @@
       left: 0;
       pointer-events: none;
     }
-    #resizeButton {
-      margin-top: 20px;
+    button {
       padding: 10px 15px;
       font-size: 16px;
       cursor: pointer;
+      margin: 0 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background-color: #f8f8f8;
+    }
+    button.active {
+      background-color: #4CAF50;
+      color: white;
+      border-color: #388E3C;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      max-width: 600px;
     }
   </style>
 </head>
@@ -43,7 +59,12 @@
     <canvas id="overlay"></canvas>
   </div>
   
-  <button id="resizeButton">Double Size</button>
+  <div class="controls">
+    <button id="resizeButton">Double Size</button>
+    <button id="toggleCentroids" class="active">All Centroids: ON</button>
+    <button id="toggleBboxes" class="active">Bounding Boxes: ON</button>
+    <button id="toggleCenter" class="active">Average Centroid: ON</button>
+  </div>
 
   <script>
     const esp32_ip = "esp32-cam.local";
@@ -51,8 +72,19 @@
     const canvas = document.getElementById('overlay');
     const ctx = canvas.getContext('2d');
     const resizeButton = document.getElementById('resizeButton');
+    const toggleCentroids = document.getElementById('toggleCentroids');
+    const toggleBboxes = document.getElementById('toggleBboxes');
+    const toggleCenter = document.getElementById('toggleCenter');
     
     let isZoomed = false;
+    let showCentroids = true;
+    let showBboxes = true;
+    let showCenter = true;
+
+    const config = {
+      edgeThreshold: 0.1,
+      overlapThreshold: 0.2
+    };
 
     video.onload = function() {
       canvas.width = video.clientWidth;
@@ -71,39 +103,227 @@
       return [];
     }
 
-    async function drawOverlay() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const displayToOriginalRatioX = canvas.width / 320;
-      const displayToOriginalRatioY = canvas.height / 240;
-
-      //console.log(displayToOriginalRatioX, displayToOriginalRatioY);
-
-      const detections = await fetchCentroid();
-      detections.forEach(obj => {
+    function filterEdgeDetections(detections, imageWidth, imageHeight) {
+      const edgeX = imageWidth * config.edgeThreshold;
+      const edgeY = imageHeight * config.edgeThreshold;
+      
+      return detections.filter(box => {
+        const centerX = box.x + (box.width / 2);
+        const centerY = box.y + (box.height / 2);
         
-        let centroid_x = (obj.x + obj.width / 2) * displayToOriginalRatioX;
-        let centroid_y = (obj.y + obj.height / 2) * displayToOriginalRatioY;
-
-        //let centroid_x = obj.x * displayToOriginalRatioX;
-        //let centroid_y = obj.y * displayToOriginalRatioY;
-        console.log(obj.x, obj.y);
-
-        ctx.beginPath();
-        ctx.arc(centroid_x, centroid_y, 5, 0, 2 * Math.PI);
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = 'red';
-        ctx.stroke();
-
-        ctx.fillStyle = 'red';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(obj.label, centroid_x, centroid_y - 8);
+        return (
+          centerX > edgeX && 
+          centerX < (imageWidth - edgeX) && 
+          centerY > edgeY && 
+          centerY < (imageHeight - edgeY)
+        );
       });
     }
 
+    function doBoxesOverlap(box1, box2) {
+      const xLeft = Math.max(box1.x, box2.x);
+      const yTop = Math.max(box1.y, box2.y);
+      const xRight = Math.min(box1.x + box1.width, box2.x + box2.width);
+      const yBottom = Math.min(box1.y + box1.height, box2.y + box2.height);
+      
+      if (xRight < xLeft || yBottom < yTop) {
+        return false;
+      }
+      
+      const intersectionArea = (xRight - xLeft) * (yBottom - yTop);
+      
+      const box1Area = box1.width * box1.height;
+      const box2Area = box2.width * box2.height;
+      
+      const overlapRatio1 = intersectionArea / box1Area;
+      const overlapRatio2 = intersectionArea / box2Area;
+      
+      return overlapRatio1 > config.overlapThreshold || overlapRatio2 > config.overlapThreshold;
+    }
+
+    function mergeOverlappingBoxes(boxes) {
+      if (boxes.length <= 1) return boxes;
+      
+      let boxesCopy = JSON.parse(JSON.stringify(boxes));
+      
+      let merged = new Array(boxesCopy.length).fill(false);
+      let mergedBoxes = [];
+      
+      for (let i = 0; i < boxesCopy.length; i++) {
+        if (merged[i]) continue;
+        
+        let currentBox = boxesCopy[i];
+        let mergedBox = {
+          x: currentBox.x,
+          y: currentBox.y,
+          width: currentBox.width,
+          height: currentBox.height,
+          label: currentBox.label,
+          mergedLabels: [currentBox.label]
+        };
+        
+        for (let j = i + 1; j < boxesCopy.length; j++) {
+          if (!merged[j] && doBoxesOverlap(currentBox, boxesCopy[j])) {
+            const box2 = boxesCopy[j];
+            
+            const xMin = Math.min(mergedBox.x, box2.x);
+            const yMin = Math.min(mergedBox.y, box2.y);
+            const xMax = Math.max(mergedBox.x + mergedBox.width, box2.x + box2.width);
+            const yMax = Math.max(mergedBox.y + mergedBox.height, box2.y + box2.height);
+            
+            mergedBox.x = xMin;
+            mergedBox.y = yMin;
+            mergedBox.width = xMax - xMin;
+            mergedBox.height = yMax - yMin;
+            
+            if (!mergedBox.mergedLabels.includes(box2.label)) {
+              mergedBox.mergedLabels.push(box2.label);
+            }
+            
+            merged[j] = true;
+          }
+        }
+        
+        if (mergedBox.mergedLabels.length > 1) {
+          mergedBox.label = mergedBox.mergedLabels.join('+');
+        }
+        
+        mergedBoxes.push(mergedBox);
+        merged[i] = true;
+      }
+      
+      return mergedBoxes;
+    }
+
+    function calculateAverageCentroid(detections) {
+      if (detections.length === 0) return null;
+      
+      let totalX = 0;
+      let totalY = 0;
+      let totalWeight = 0;
+      let allLabels = new Set();
+      
+      detections.forEach(box => {
+        const weight = box.width * box.height;
+        const centerX = box.x + (box.width / 2);
+        const centerY = box.y + (box.height / 2);
+        
+        totalX += centerX * weight;
+        totalY += centerY * weight;
+        totalWeight += weight;
+        
+        if (box.mergedLabels) {
+          box.mergedLabels.forEach(label => allLabels.add(label));
+        } else {
+          allLabels.add(box.label);
+        }
+      });
+      
+      const combinedLabel = Array.from(allLabels).join('+');
+      
+      return {
+        x: totalX / totalWeight,
+        y: totalY / totalWeight,
+        label: combinedLabel,
+        count: detections.length
+      };
+    }
+
+    async function drawOverlay() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const originalWidth = 320;
+      const originalHeight = 240;
+      
+      const displayToOriginalRatioX = canvas.width / originalWidth;
+      const displayToOriginalRatioY = canvas.height / originalHeight;
+
+      const detections = await fetchCentroid();
+      
+      const filteredDetections = filterEdgeDetections(detections, originalWidth, originalHeight);
+      
+      const mergedDetections = mergeOverlappingBoxes(filteredDetections);
+      
+      if (mergedDetections.length === 0) return;
+      
+      mergedDetections.forEach(obj => {
+        let centroid_x = (obj.x + obj.width / 2) * displayToOriginalRatioX;
+        let centroid_y = (obj.y + obj.height / 2) * displayToOriginalRatioY;
+        
+        if (showBboxes) {
+          ctx.beginPath();
+          ctx.rect(
+            obj.x * displayToOriginalRatioX, 
+            obj.y * displayToOriginalRatioY, 
+            obj.width * displayToOriginalRatioX, 
+            obj.height * displayToOriginalRatioY
+          );
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'blue';
+          ctx.stroke();
+        }
+        
+        if (showCentroids) {
+          ctx.beginPath();
+          ctx.arc(centroid_x, centroid_y, 5, 0, 2 * Math.PI);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'red';
+          ctx.stroke();
+
+          ctx.fillStyle = 'red';
+          ctx.font = '12px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(obj.label, centroid_x, centroid_y - 8);
+        }
+      });
+      
+      if (showCenter) {
+        const averageCentroid = calculateAverageCentroid(mergedDetections);
+        
+        if (averageCentroid) {
+          const avgX = averageCentroid.x * displayToOriginalRatioX;
+          const avgY = averageCentroid.y * displayToOriginalRatioY;
+          
+          ctx.beginPath();
+          ctx.arc(avgX, avgY, 8, 0, 2 * Math.PI);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = 'green';
+          ctx.stroke();
+          
+          ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+          ctx.fill();
+          
+          ctx.fillStyle = 'green';
+          ctx.font = 'bold 14px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText("Orange", avgX, avgY - 12);
+          
+          //ctx.fillText(`(${averageCentroid.count} objects)`, avgX, avgY + 20);
+        }
+      }
+    }
+
     setInterval(drawOverlay, 200);
+
+    toggleCentroids.addEventListener('click', () => {
+      showCentroids = !showCentroids;
+      toggleCentroids.textContent = `All Centroids: ${showCentroids ? 'ON' : 'OFF'}`;
+      toggleCentroids.classList.toggle('active', showCentroids);
+    });
+    
+    toggleBboxes.addEventListener('click', () => {
+      showBboxes = !showBboxes;
+      toggleBboxes.textContent = `Bounding Boxes: ${showBboxes ? 'ON' : 'OFF'}`;
+      toggleBboxes.classList.toggle('active', showBboxes);
+    });
+    
+    toggleCenter.addEventListener('click', () => {
+      showCenter = !showCenter;
+      toggleCenter.textContent = `Average Centroid: ${showCenter ? 'ON' : 'OFF'}`;
+      toggleCenter.classList.toggle('active', showCenter);
+    });
 
     resizeButton.addEventListener('click', () => {
       if (isZoomed) {

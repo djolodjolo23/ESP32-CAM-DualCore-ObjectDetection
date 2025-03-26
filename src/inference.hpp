@@ -6,8 +6,9 @@
 #include "OV2640.hpp"
 #include "detected_objects.hpp"
 #include "edge-impulse-sdk/dsp/image/image.hpp"
+#include "shared_buffer.hpp"
 
-#include "test_inferencing.h" // use your own model here
+#include "FINAL_-_Object_Detection_128x128_ORANGE_inferencing.h" // use your own model here
 
 extern OV2640 cam;
 extern SharedBuffer sharedBuffer;

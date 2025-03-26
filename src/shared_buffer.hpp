@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include "esp_camera.h"
-#include "test_inferencing.h" // use your own model here
+#include "FINAL_-_Object_Detection_128x128_ORANGE_inferencing.h" // use your own model here
 
 typedef struct {
   camera_fb_t* frame;
