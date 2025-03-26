@@ -27,7 +27,7 @@ The project runs two main tasks on separate cores:
 
 Inference is **not** performed on every single frame, as processing time depends on the model size. Instead, the video stream runs continuously, and a tiny JS script in `index.html` dynamically updates centroids. The actual drawing happens on the client side while streaming, while live inference runs on the ESP32.
 
-Currently, this setup works with **FOMO** from Edge Impulse, as it's much faster compared to other models. The script calculates centroids by default. If you want to modify the code to use bounding boxes instead, you'll need to update the `index.html` file accordingly.
+Currently, this setup works with **FOMO** from Edge Impulse, as it's the only model that can run object detection with an acceptable time delay. The script includes three buttons that allow you to enable/disable individual centroids, bounding boxes, and a single global centroid (which calculates the mean value of centroids—works really well for a single class and low resolution).
 
 ## How to Run
 
