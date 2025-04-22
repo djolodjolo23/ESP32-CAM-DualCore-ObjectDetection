@@ -13,7 +13,7 @@ There are other ways to upload the code, of course, through the data ports on th
 - A buck converter step-down to 3.3V
 - Several jumper cables
 - A breadboard
-- Something to create a tripod effect (a tripod works best, but I personally used a book reading light—the real DIY hero!)
+- Something to create a tripod effect (a tripod works best, but I personally used a book reading light, the real DIY hero!)
 - An ESP32-CAM microcontroller
 
 ![My setup](assets/485092731_676135508223403_1431287751894489238_n.jpg)
